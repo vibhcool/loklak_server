@@ -47,7 +47,7 @@ public abstract class AbstractObjectEntry extends Post implements ObjectEntry {
     }
 
     public byte[] toJSONBytes() {
-        String s = toString();
+        String s = this.toJSON().toString();
         return s == null ? null : s.getBytes(StandardCharsets.UTF_8);
     }
     
