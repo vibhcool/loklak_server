@@ -20,9 +20,17 @@
 package org.loklak.api.search;
 
 import java.io.IOException;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
-import java.io.BufferedReader;
+import java.util.List;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.apache.http.client.utils.URIBuilder;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
@@ -37,24 +45,43 @@ import org.loklak.server.BaseUserRole;
 
 public class QuoraProfileScraper extends BaseScraper {
 
-    private final long serialVersionUID = -3398701925784347310L;
+    private final long serialVersionUID = -3398701925784347312L;
+    private Timeline2 postList = new Timeline2(this.order);
+    private List<String> typeList = null;
 
     public QuoraProfileScraper() {
         super();
         this.baseUrl = "https://www.quora.com/";
-        this.midUrl = "profile/";
-        String scraperName = "Quora";
+        this.scraperName = "Quora";
+
     }
 
     public QuoraProfileScraper(String _query) {
         this();
         this.query = _query;
+        this.setExtraValue("query", this.query);
     }
 
-    public QuoraProfileScraper(String _query, String _extra) {
+    public QuoraProfileScraper(String _query, Map<String, String> _extra) {
         this();
+        this.setExtra(_extra);
         this.query = _query;
-        this.extra = _extra;
+        this.setExtraValue("query", this.query);
+    }
+
+    public QuoraProfileScraper(Map<String, String> _extra) {
+        this();
+        this.setExtra(_extra);
+    }
+
+    protected void setParam() {
+        if(!"".equals(this.getExtraValue("type"))) {
+            this.typeList = Arrays.asList(this.getExtraValue("type").trim().split("\\s*,\\s*"));
+        } else {
+            this.typeList = new ArrayList<String>();
+            this.typeList.add("all");
+            this.setExtraValue("type", String.join(",", this.typeList));
+        }
     }
 
     @Override
@@ -76,10 +103,215 @@ public class QuoraProfileScraper extends BaseScraper {
         return new HashMap<String, String>();
     }
 
-    private Post scrapeProfile() {
+    protected String prepareSearchUrl(String type) {
+        URIBuilder url = null;
+        String midUrl = "search/";
+        try {
+            switch(type) {
+                case "user":
+                    midUrl = "profile/";
+                    url = new URIBuilder(this.baseUrl + midUrl + this.query);
+                    break;
+                case "question":
+                    url = new URIBuilder(this.baseUrl + midUrl);
+                    url.addParameter("q", this.query);
+                    url.addParameter("type", "question");
+                    break;
+                case "answer":
+                    url = new URIBuilder(this.baseUrl + midUrl);
+                    url.addParameter("q", this.query);
+                    url.addParameter("type", "answer");
+                    break;
+                default:
+                    url = new URIBuilder("");
+                    break;
+            }
+        } catch (URISyntaxException e) {
+            DAO.log("Invalid Url: baseUrl = " + this.baseUrl + ", mid-URL = " + midUrl + "query = " + this.query + "type = " + type);
+        }
 
+        return url.toString();
+    }
+
+    @Override
+    public Timeline2 getData() {
+        String midUrl;
+        String url;
+        Thread[] dataThreads = new Thread[2];
+        this.postList = new Timeline2(this.order);
+
+        if(this.typeList.contains("user") || this.typeList.contains("all")) {
+            midUrl = "profile/";
+            url = prepareSearchUrl("user");
+            dataThreads[0] = new ConcurrentScrape(url, "users");
+            dataThreads[0].start();
+        } else {
+            dataThreads[0] = new Thread();
+        }
+        if(this.typeList.contains("question") || this.typeList.contains("all")) {
+            midUrl = "search/?q=";
+            url = prepareSearchUrl("question");
+            dataThreads[1] = new ConcurrentScrape(url, "question");
+            dataThreads[1].start();
+        } else {
+            dataThreads[1] = new Thread();
+        }
+        //TODO: add more types
+
+        int i = 0;
+        try {
+            for (i = 0; i < dataThreads.length; i++) {
+                dataThreads[i].join();
+            }
+        } catch(InterruptedException e) {
+            String stuck_at = "";
+            switch(i) {
+                case 0:
+                    stuck_at = "users";
+                    break;
+                case 1:
+                    stuck_at = "question";
+                    break;
+                case 2:
+                    stuck_at = "answer";
+                    break;
+                default:
+                    stuck_at = "unknown, check the code";
+            }
+
+            DAO.severe("Couldn't complete all threads, stuck at scraper: " + this.scraperName + " dataThread: " + stuck_at);
+        }
+
+        return this.postList;
+    }
+
+    protected class ConcurrentScrape extends Thread {
+
+        private String url = "";
+        private String type = "all";
+
+        public ConcurrentScrape(String url, String type) {
+            this.url = url;
+            this.type = type;
+        }
+
+        public void run() {
+            try {
+                QuoraProfileScraper.this.postList.addPost(QuoraProfileScraper.this.getDataFromConnection(this.url, this.type));
+            } catch (IOException e) {
+                DAO.severe("check internet connection for url: " + this.url + " type: " + this.type);
+            }
+        }
+    }
+
+
+    private Timeline2 scrapeQues(BufferedReader br, String url) {
+        Pattern resultBlock = Pattern.compile("<div[^>]*[^>\\s]*[^>]*class=['\"][^>'\"]*(results_list)");
+        Pattern quesLink = Pattern.compile("<a[^>]*class=['\"][^>'\"]*question_link[^>'\"]*[\"'][^>]*href=['\"]([^>'\"]*)");
+        Pattern quesStart = Pattern.compile("<span[^>]*class=[\'\"][^>\'\"]*question_text[^>\'\"]*[\'\"][^>]*>");
+        String ignoreTag = "(<[^>]*>)";
+        Matcher matcher;
+        String fromTerm = "";
+        String uptoTerm = "</a>";
+        Post qPost = null;
+
+        Timeline2 quesList = new Timeline2(this.order);
+
+        String input = "";
+        String _qPostId = "";
+        String _qPostUrl = "";
+
+        int last = 0;
+        try {
+            // Get to Result List block
+            while(true) {
+                input = br.readLine();
+                if (input == null) break;
+
+                matcher = resultBlock.matcher(input);
+                if (matcher.find()) {
+                    input = input.substring(matcher.end());
+                    break;
+                }
+            }
+            // Scraping starts
+            for(int i = 0;input !=null ; i++) {
+
+                // Get to first result
+                while(input != null) {
+                    matcher = quesLink.matcher(input);
+                    if(matcher.find()) {
+                        _qPostId = String.valueOf(matcher.end());
+                        _qPostUrl = this.baseUrl + matcher.group(1);
+                        input = input.substring(matcher.end());
+                        break;
+                    } else {
+                    input = br.readLine();
+                    }
+
+                }
+
+                qPost = new QuoraPost(_qPostId, i);
+                qPost.put("search_url", url);
+                qPost.put("post_url", _qPostUrl);
+                qPost.put("post_type", "question");
+
+                // Get questions
+                while(input != null) {
+                    matcher = quesStart.matcher(input);
+                    if(matcher.find()) {
+                        input = input.substring(matcher.end());
+                        break;
+                    } else {
+                        input = br.readLine();
+                    }
+                }
+
+                while(input != null) {
+                    fromTerm = fromTerm + input;
+                    last = input.indexOf(uptoTerm);
+                    if(input.indexOf(uptoTerm) > 0) {
+                        fromTerm = fromTerm.substring(0, input.indexOf(uptoTerm));
+                        break;
+                    } else {
+                        input = br.readLine();
+                    }
+
+                }
+
+                fromTerm = fromTerm.replaceAll(ignoreTag, "");
+                input = input.substring(last);
+                qPost.put("post_ques", fromTerm);
+                fromTerm = "";
+                quesList.addPost(qPost);
+            }
+
+
+        } catch(IOException e) {
+            qPost = new QuoraPost(this.query, -1);
+            qPost.put("error", "Connection error while fetching");
+            qPost.put("search_url", url);
+            quesList.addPost(qPost);
+        } catch(NullPointerException e) { }
+
+        return quesList;
+    }
+
+    private Timeline2 scrapeProfile(BufferedReader br, String url) {
+        String html;
         Post quoraProfile = new QuoraPost(this.query, 0);
-        Document userHTML = Jsoup.parse(this.html);
+        Timeline2 usersList = new Timeline2(this.order);
+        try {
+            html = bufferedReaderToString(br);
+        } catch(IOException e) {
+            DAO.trace(e);
+            html = "";
+            //TODO: output error if no output in json
+        }
+
+        Document userHTML = Jsoup.parse(html);
+
+        quoraProfile.put("search_url", url);
 
         String bio = userHTML.getElementsByAttributeValueContaining("class", "ProfileDescription").text();
         quoraProfile.put("bio", bio);
@@ -122,25 +354,26 @@ public class QuoraProfileScraper extends BaseScraper {
         }
         quoraProfile.put("feeds", feeds);
 
-        return quoraProfile;
+        usersList.addPost(quoraProfile);
+        return usersList;
     }
 
     @Override
-    protected Timeline2 scrape(BufferedReader br) {
-        Timeline2 dataSet = new Timeline2(order);
-        //for profile
-        Post qPost;
-        try {
-            this.html = bufferedReaderToString(br);
-        } catch(IOException e) {
-            DAO.trace(e);
+    protected Post scrape(BufferedReader br, String type, String url) {
+        Post typeArray = new Post(true);
+
+        switch(type) {
+            case "users":
+                typeArray.put("users", this.scrapeProfile(br, url).toArray());
+                break;
+            case "question":
+                typeArray.put("question", this.scrapeQues(br, url).toArray());
+                break;
+            default:
+                break;
         }
-        qPost = scrapeProfile();
-
-        return dataSet.add(qPost);
+        return typeArray;
     }
-
-
 
     public static class QuoraPost extends Post {
 
@@ -173,5 +406,4 @@ public class QuoraProfileScraper extends BaseScraper {
         }
         //clean data
     }
-
 }

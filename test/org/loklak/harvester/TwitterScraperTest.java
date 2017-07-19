@@ -12,28 +12,28 @@ import java.time.ZonedDateTime;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.ZoneId;
+import java.lang.reflect.Method;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import org.junit.Test;
+import org.loklak.objects.Timeline;
+import org.loklak.objects.MessageEntry;
+import org.loklak.http.ClientConnection;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.StringContains.containsString;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertEquals;
-import java.lang.reflect.Method;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 
-import org.loklak.objects.Timeline;
-import org.loklak.objects.MessageEntry;
-import org.loklak.http.ClientConnection;
 
-/*
-    These unit-tests test org.loklak.harvester.TwitterScraper.java
-    Twitter profile @loklak_test has been used for testing search method of TwitterScraper
-*/
+/**
+ * These unit-tests test org.loklak.harvester.TwitterScraper.java
+ * Twitter profile @loklak_test has been used for testing search method of TwitterScraper
+ */
 public class TwitterScraperTest {
 
-    /*
-        This unit-test tests twitter url creation
-    */
+    /**
+     * This unit-test tests twitter url creation
+     */
     @Test
     public void testPrepareSearchUrl() {
         String url;
@@ -82,10 +82,10 @@ public class TwitterScraperTest {
 
     }
 
-    /*
-        This unit-test tests data fetched in TwitterScraper.search() method.
-        This test uses TwitterTweet object to get and check tweets
-    */
+    /**
+     * This unit-test tests data fetched in TwitterScraper.search() method.
+     * This test uses TwitterTweet object to get and check tweets
+     */
     @Test
     public void testSimpleSearch() {
         Timeline ftweet_list;
@@ -104,13 +104,9 @@ public class TwitterScraperTest {
         tweet_check.put("status_id_url", "https://twitter.com/loklak_test/status/870536303569289216");
         tweet_check.put("place_name", "");
         tweet_check.put("place_id", "");
-        tweet_check.put("text", "Tweet with a video https://pic.twitter.com/1R9ICL6icm");
+        tweet_check.put("text", "Tweet with a video");
         tweet_check.put("writeToIndex", "true");
         tweet_check.put("writeToBackend", "true");
-        tweet_check.put("videoString", "[https://video.twimg.com/ext_tw_video/870534269676003328/pu/pl/tewnT5aKMmfZpC5R.m3u8,"
-            + " https://video.twimg.com/ext_tw_video/870534269676003328/pu/vid/640x360/Q_Ls6AMZRpctNokb.mp4,"
-            + " https://video.twimg.com/ext_tw_video/870534269676003328/pu/vid/320x180/IwQGl8OfwtxZ5Ftd.mp4,"
-            + " https://video.twimg.com/ext_tw_video/870534269676003328/pu/vid/1280x720/HxgbfmPFi7yY2gd3.mp4]");
 
         try {
             // Scrap all html from the https_url link
@@ -151,7 +147,6 @@ public class TwitterScraperTest {
         assertEquals(tweet.getText(), tweet_check.get("text"));
         assertEquals(tweet.getPlaceId(), tweet_check.get("place_name"));
         assertEquals(tweet.getPlaceName(), tweet_check.get("place_id"));
-        assertEquals(tweet.getVideos().toString(), tweet_check.get("videoString"));
 
         try {
             // Other parameters of twittertweet(used )
@@ -162,9 +157,9 @@ public class TwitterScraperTest {
         }
     }
 
-    /*
-        This method merges 2 arrays of Timeline Objects(containing array of TwitterTweet objects) into one Timeline object
-    */
+    /**
+     * This method merges 2 arrays of Timeline Objects(containing array of TwitterTweet objects) into one Timeline object
+     */
     public Timeline processTweetList(Timeline[] tweet_list) {
 
         for (MessageEntry me: tweet_list[1]) {
@@ -178,9 +173,9 @@ public class TwitterScraperTest {
 
     }
 
-    /*
-        Change Date format to compare with other dates
-    */
+    /**
+     * Change Date format to compare with other dates
+     */
     public String dateFormatChange(String time) {
 
         String k;

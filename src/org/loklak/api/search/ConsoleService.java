@@ -213,7 +213,9 @@ public class ConsoleService extends AbstractAPIHandler implements APIHandler {
             return json;
         });
         dbAccess.put(Pattern.compile("SELECT +?(.*?) +?FROM +?githubProfile +?WHERE +?profile ??= ??'(.*?)' ??;"), matcher -> {
-            SusiThought json = GithubProfileScraper.scrapeGithub(matcher.group(2));
+            BaseScraper githubScrape = new GithubProfileScraper(matcher.group(2));
+            Timeline2 dataList = githubScrape.getData();
+            SusiThought json = new SusiThought(dataList.toJSON());
             SusiTransfer transfer = new SusiTransfer(matcher.group(1));
             json.setData(transfer.conclude(json.getData()));
             return json;
@@ -246,7 +248,7 @@ public class ConsoleService extends AbstractAPIHandler implements APIHandler {
             return json;
         });
 
-		dbAccess.put(Pattern.compile("SELECT +?(.*?) +?FROM +?wikigeodata +?WHERE +?place ??= ??'(.*?)' ??;"), matcher -> {
+        dbAccess.put(Pattern.compile("SELECT +?(.*?) +?FROM +?wikigeodata +?WHERE +?place ??= ??'(.*?)' ??;"), matcher -> {
             SusiThought json = WikiGeoData.wikiGeoData(matcher.group(2));
             SusiTransfer transfer = new SusiTransfer(matcher.group(1));
             json.setData(transfer.conclude(json.getData()));
