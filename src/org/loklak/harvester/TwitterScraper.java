@@ -65,7 +65,8 @@ import org.loklak.objects.UserEntry;
 
 public class TwitterScraper {
 
-    public static final ExecutorService executor = Executors.newFixedThreadPool(40);
+    public static final ExecutorService executor = Executors.newWorkStealingPool(
+            Integer.parseInt(DAO.getConfig("thread.scraper.twitter.data.size", "40")));
     public static final Pattern emoji_pattern_span = Pattern.compile("<span [^>]*class=\"Emoji Emoji--forLinks\" [^>]*>[\\n]*[^<]*</span>[\\n]*<span [^>]*class=\"visuallyhidden\" [^>]*aria-hidden=\"true\"[^>]*>[\\n]*([^<]*)[\\n]*</span>");
     private static final Pattern bearerJsUrlRegex = Pattern.compile("showFailureMessage\\(\\'(.*?main.*?)\\'\\);");
     private static final Pattern guestTokenRegex = Pattern.compile("document\\.cookie \\= decodeURIComponent\\(\\\"gt\\=([0-9]+);");
@@ -436,7 +437,6 @@ public class TwitterScraper {
                     // indexed again.
                     if (tweet.willBeTimeConsuming()) {
                         executor.execute(tweet);
-                        //new Thread(tweet).start();
                         // because the executor may run the thread in the current thread it could be possible that the result is here already
                         if (tweet.isReady()) {
                             timelineReady.add(tweet, user);
