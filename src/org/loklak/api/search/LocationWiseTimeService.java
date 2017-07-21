@@ -29,16 +29,12 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.loklak.data.DAO;
-import org.loklak.server.APIException;
-import org.loklak.server.APIHandler;
-import org.loklak.server.AbstractAPIHandler;
-import org.loklak.server.Authorization;
+import org.loklak.harvester.BaseScraper;
+import org.loklak.harvester.Post;
+import org.loklak.objects.Timeline2;
 import org.loklak.server.BaseUserRole;
-import org.loklak.server.Query;
-import org.loklak.susi.SusiThought;
-import org.loklak.tools.storage.JSONObjectWithDefault;
 
-public class LocationWiseTimeService extends AbstractAPIHandler implements APIHandler {
+public class LocationWiseTimeService extends BaseScraper {
 
 	private static final long serialVersionUID = -1495493690406247295L;
 

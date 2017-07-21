@@ -18,27 +18,31 @@
 
 package org.loklak.api.search;
 
+import java.io.BufferedReader;
+import java.util.Map;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
 import javax.servlet.http.HttpServletResponse;
-
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.loklak.data.DAO;
-import org.loklak.server.APIException;
-import org.loklak.server.APIHandler;
-import org.loklak.server.AbstractAPIHandler;
-import org.loklak.server.Authorization;
+import org.loklak.harvester.BaseScraper;
+import org.loklak.harvester.Post;
+import org.loklak.objects.Timeline2;
 import org.loklak.server.BaseUserRole;
-import org.loklak.server.Query;
-import org.loklak.susi.SusiThought;
-import org.loklak.tools.storage.JSONObjectWithDefault;
 
-public class TimeAndDateService extends AbstractAPIHandler implements APIHandler {
+public class TimeAndDateService extends BaseScraper {
 
     private static final long serialVersionUID = 6808423132726076271L;
+
+    public TimeAndDateService() {
+        super();
+        this.baseUrl = "";
+        this.scraperName = "timeanddate";
+        this.setExtraValue("query", "no_query");
+    }
 
     @Override
     public String getAPIPath() {
@@ -55,18 +59,18 @@ public class TimeAndDateService extends AbstractAPIHandler implements APIHandler
         return null;
     }
 
-    public JSONObject serviceImpl(
-            Query call,
-            HttpServletResponse response,
-            Authorization rights,
-            JSONObjectWithDefault permissions
-    ) throws APIException {
-        return timeAndDate();
+   protected Post scrape(BufferedReader br, String type, String url) {
+        // Arguments are not used
+
+        Post typeArray = new Post(true);
+        typeArray.put(this.scraperName, this.timeAndDate().toArray());
+        return typeArray;
     }
 
-    public static SusiThought timeAndDate() {
+    public Timeline2 timeAndDate() {
 
-        JSONObject timeAndDate = new JSONObject();
+        Post timeAndDate = new Post();
+        Timeline2 timeList = new Timeline2(this.order);
 
         Date time_and_date = new Date();
         String time_and_date_UTC = timeToUTC(time_and_date).toString().replaceAll(
@@ -78,17 +82,14 @@ public class TimeAndDateService extends AbstractAPIHandler implements APIHandler
         timeAndDate.put("UTC_time_and_date", time_and_date_UTC);
         timeAndDate.put("time_diff", timeDiff(time_and_date));
 
-        JSONArray jsonArray = new JSONArray();
-        jsonArray.put(timeAndDate);
+        timeList.addPost(timeAndDate);
 
-        SusiThought result = new SusiThought();
-        result.setData(jsonArray);
-        return result;
+        return timeList;
     }
 
-    /*
+    /**
      * Convert localzone time to UTC zone time
-    */
+     */
     private static Date timeToUTC(Date date) {
 
         Date dateUtc;
@@ -108,9 +109,9 @@ public class TimeAndDateService extends AbstractAPIHandler implements APIHandler
         return dateUtc;
     }
 
-    /*
+    /**
      * Return difference between the local time and UTC time in hours
-    */
+     */
     private static String timeDiff(Date timeLocal) {
     
         long diff = timeLocal.getTime() - timeToUTC(timeLocal).getTime();
