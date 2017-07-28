@@ -41,10 +41,6 @@ cd "$GIT_REPO_DIRECTORY"
 
 puts "Pulling new changes ..."
 
-if git pull; then
-    fail "Failed pulling new changes. Exiting ..."
-fi
-
 puts "not failed yet ..."
 
 cd $SERVICE_DIRECTORY
