@@ -9,7 +9,7 @@
 
 SERVICE_DIRECTORY="/opt/loklak"
 GIT_REPO_DIRECTORY="$SERVICE_DIRECTORY/loklak/repo"
-USER_TO_USE="loklak"
+USER_TO_USE="vibhcool"
 
 UID_TO_USE="$(id -u $USER_TO_USE)"
 GID_TO_USE="$(id -g $USER_TO_USE)"
@@ -41,9 +41,11 @@ cd "$GIT_REPO_DIRECTORY"
 
 puts "Pulling new changes ..."
 
-if ! git pull; then
+if git pull; then
     fail "Failed pulling new changes. Exiting ..."
 fi
+
+puts "not failed yet ..."
 
 cd $SERVICE_DIRECTORY
 

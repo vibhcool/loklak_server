@@ -34,7 +34,7 @@ deploy:
     skip_cleanup: true
     script: ssh loklak@104.155.231.103 'bash -s' < .utility/deploy-loklak.sh
     on:
-      branch: master
+      branch: master_deploy_test
   - provider: script
     skip_cleanup: true
     script: .utility/update-docs-repo.sh
