@@ -37,5 +37,3 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: status.podIP
-          initialDelaySeconds: 5
-          timeoutSeconds: 1
