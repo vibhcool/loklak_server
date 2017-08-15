@@ -15,8 +15,8 @@ spec:
         image: gcr.io/google_containers/defaultbackend:1.0
         livenessProbe:
           httpGet:
-            path: /api/status.json
-            port: 8080
+            path: /healthz
+            port: 10254
             scheme: HTTP
           initialDelaySeconds: 30 
           timeoutSeconds: 5

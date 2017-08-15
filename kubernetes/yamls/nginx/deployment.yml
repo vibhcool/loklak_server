@@ -25,8 +25,8 @@ spec:
                 fieldPath: metadata.namespace
         livenessProbe:
           httpGet:
-            path: /api/status.json
-            port: 8080
+            path: /healthz
+            port: 10254
             scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 10
