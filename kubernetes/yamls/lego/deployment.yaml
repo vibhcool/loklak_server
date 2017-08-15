@@ -37,9 +37,5 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: status.podIP
-        readinessProbe:
-          httpGet:
-            path: /api/status.json
-            port: 8080
           initialDelaySeconds: 5
           timeoutSeconds: 1
