@@ -22,6 +22,8 @@ spec:
             configMapKeyRef:
               name: kube-lego
               key: lego.email
+        - name: LEGO_LOG_LEVEL
+          value: debug
         - name: LEGO_URL
           valueFrom:
             configMapKeyRef:
